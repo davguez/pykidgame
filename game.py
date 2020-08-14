@@ -16,6 +16,11 @@ GAME_DIR = os.path.join(os.path.expanduser("~"),'pygamedir')
 IMG_DIR = os.path.join(GAME_DIR,'images')
 SOUND_DIR = os.path.join(GAME_DIR,'sound')
 
+font_list = {}
+actions=[]
+cont_action=True
+last_draw_time=0
+
 class Element:
     def __init__(self,x,y):
         self.x = x
@@ -42,11 +47,23 @@ class Image(Element):
         SCREEN.blit(self.img, self.rect)
 
 class Text(Element):
-    def __init__(self,txt,x=0,y=0):
+    def __init__(self,txt,x=0,y=0,font_name='freesansbold.ttf',font_size=32,color=[255,255,255],antialias=False):
         super().__init__(x,y)
+        self.antialias=antialias
+        self.color=color
         self.txt = txt
+        if (font_name,font_size) in font_list:
+            self.font = font_list[font_name,font_size]
+        else:
+            self.font = pygame.font.Font(font_name,font_size)
+            font_list[font_name,font_size] = self.font
+        
     def _draw(self):
-        pass
+        surf = self.font.render(self.txt,self.antialias, self.color)
+        rect = surf.get_rect()
+        rect.left = self.x
+        rect.top = self.y
+        SCREEN.blit(surf , rect)
 
 class Line(Element):
     def __init__(self,x=0,y=0,w=100,h=100,color=[255,255,255],line_width=1,antialias=False):
@@ -85,6 +102,26 @@ class Ellipse(Element):
         pygame.draw.ellipse( SCREEN, self.color, R,self.line_width )
 
 
+def add_action(action):
+    global actions
+    actions.append(action)
+
+def start(t=1000/50):
+    global last_draw_time
+    while cont_action :
+        for a in actions:
+            a()
+        draw()
+        wait_until = last_draw_time + t
+        tick = pygame.time.get_ticks()
+        if tick < wait_until:
+            wait_time = int(wait_until - tick)
+            wait(wait_time)
+        last_draw_time = tick
+
+def stop():
+    global cont_action
+    cont_action = False
 
 def move(element,dx,dy):
     element.move(dx,dy)
@@ -99,7 +136,7 @@ def is_pressed(v):
     K = pygame.key.get_pressed()
     return K[code]
 
-def start():
+def init():
     if not os.path.exists(IMG_DIR) :
         os.makedirs(IMG_DIR)
     if not os.path.exists(SOUND_DIR) :
