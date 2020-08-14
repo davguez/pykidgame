@@ -7,10 +7,14 @@
 # @Date   : 14/08/2020, 9:21:03
 
 import pygame
+import os
 
 SIZE = WIDTH,HEIGHT = 800,600
 SCREEN = pygame.display.set_mode(SIZE)
 ALL_ELEMENTS=[]
+GAME_DIR = os.path.join(os.path.expanduser("~"),'pygamedir')
+IMG_DIR = os.path.join(GAME_DIR,'images')
+SOUND_DIR = os.path.join(GAME_DIR,'sound')
 
 class Element:
     def __init__(self,x,y):
@@ -30,7 +34,7 @@ class Element:
 class Image(Element):
     def __init__(self,img_file,x=0,y=0):
         super().__init__(x,y)
-        self.img = pygame.image.load(img_file)
+        self.img = pygame.image.load(os.path.join(IMG_DIR,img_file))
         self.rect = self.img.get_rect()
     def _draw(self):
         self.rect.left   = self.x
@@ -82,6 +86,13 @@ class Ellipse(Element):
 
 
 
+def move(element,dx,dy):
+    element.move(dx,dy)
+def move_to(element,x,y):
+    element.x=x
+    element.y=y
+
+
 def is_pressed(v):
     pygame.event.pump()
     code = pygame.key.key_code(v)
@@ -89,6 +100,10 @@ def is_pressed(v):
     return K[code]
 
 def start():
+    if not os.path.exists(IMG_DIR) :
+        os.makedirs(IMG_DIR)
+    if not os.path.exists(SOUND_DIR) :
+        os.makedirs(SOUND_DIR)
     pygame.init()
 
 def wait(t=20):
