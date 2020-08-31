@@ -8,6 +8,9 @@
 
 import pygame
 import os
+from inspect import signature
+
+DRAW_EVENT_ID=pygame.USEREVENT
 
 SIZE = WIDTH,HEIGHT = 800,600
 SCREEN = pygame.display.set_mode(SIZE)
@@ -39,45 +42,49 @@ class Element:
 
 class EventResponder:
     def __init__(self, action):
-        self._action = action
-    def act(self,event,*args,**kwarg):
-        self._action(event,*args,**kwarg)
-    def should_respond(self,event,*args,**kwarg):
+        sig = signature(action)
+        if len(sig.parameters)==0 :
+            self._action = lambda e : action()
+        else:
+            self._action = action
+    def act(self,event):
+        self._action(event)
+    def should_respond(self,event):
         return False
 
 class KeyboardResponder(EventResponder):
-    def __init__(self,key,action):
+    def __init__(self,action,key=None):
         super().__init__(action)
         self._key_code = pygame.key.key_code(key)
     def should_respond(self,event):
-        return event.type==pygame.KEYDOWN and event.key==self._key_code
+        return event.type==pygame.KEYDOWN and ( self._key_code is None or event.key==self._key_code )
 
 class JoystickResponder(EventResponder):
-    def __init__(self,button,action):
+    def __init__(self,action,button=None):
         super().__init__(action)
         self._button = button
     def should_respond(self,event):
-        return event.type==pygame.KEYDOWN and event.key==self._key_code
+        return event.type==pygame.KEYDOWN and ( self._button is None or event.key==self._button )
 
 class MouseResponder(EventResponder):
-    def __init__(self,button,action):
+    def __init__(self,action, button=None):
         super().__init__(action)
         self._button = button
     def should_respond(self,event):
-        return event.type==pygame.KEYDOWN and event.key==self._key_code
+        return event.type==pygame.KEYDOWN and ( self._button is None or event.key==self._button )
 
 class TimerResponder(EventResponder):
-    def __init__(self,tick,action):
+    def __init__(self,action,time_id):
         super().__init__(action)
-        self._tick = tick
+        self._time_id = time_id + pygame.USEREVENT +1
     def should_respond(self,event):
-        return False # TODO
+        return event.type == self._time_id
 
 class DrawingResponder(EventResponder):
     def __init__(self,action):
         super().__init__(action)
     def should_respond(self,event):
-        return False # TODO
+        return event.type == DRAW_EVENT_ID
 
 class Image(Element):
     def __init__(self,img_file,x=0,y=0):
@@ -88,6 +95,19 @@ class Image(Element):
         self.rect.left   = self.x
         self.rect.bottom = self.y
         SCREEN.blit(self.img, self.rect)
+
+
+def add_timer(timer_id , every , duration=None):
+    pygame.time.set_timer(pygame.USEREVENT + 1 + timer_id, int(every))
+    if duration is not None :
+        def create_fn():
+            ini_time = pygame.time.get_ticks()
+            def stop_this_clock(event):
+                this_time = pygame.time.get_ticks()
+                if this_time - ini_time >= duration :
+                    pygame.time.set_timer(pygame.USEREVENT + 1 + timer_id, 0)
+            return stop_this_clock
+        when('timer',create_fn(),time_id=timer_id)
 
 
 def add_response(response_type):
@@ -108,19 +128,23 @@ def when(event , action,**kwargs):
         responder = DrawingResponder(action)
     elif event=='key':
         if 'letter' in kwargs:
-            responder = KeyboardResponder(kwargs['letter'],action)
+            responder = KeyboardResponder(action,kwargs['letter'])
         else:
-            responder = KeyboardResponder(None,action)
-    elif event=='joystick':
-        responder = JoystickResponder(None,action)
-    elif event=='mouse':
-        responder = MouseResponder(None,action)
+            responder = KeyboardResponder(action)
+    elif event=='joystick click':
+        responder = JoystickResponder(action)
+    elif event=='joystick move':
+        responder = JoystickResponder(action)
+    elif event=='mouse click':
+        responder = MouseResponder(action)
+    elif event=='mouse move':
+        responder = MouseResponder(action)
+    elif event=='timer':
+        responder = TimerResponder(action,kwargs['timer_id'])
     
     if responder is not None:
         add_response(responder)
     return responder
-
-
 
 
 class Text(Element):
@@ -184,15 +208,15 @@ def add_action(action):
     actions.append(action)
 
 def start(t=1000/50):
-
-    DRAW_EVENT_ID=pygame.USEREVENT+1
-    pygame.time.set_timer(DRAW_EVENT_ID,t)
+    pygame.time.set_timer(DRAW_EVENT_ID,int(t))
 
     while cont_action :
         event = pygame.event.wait()
         if event.type == DRAW_EVENT_ID :
             draw()
-        
+        for response in responses :
+            if response.should_respond(event) :
+                response.act(event)
 
 def stop():
     global cont_action
@@ -203,7 +227,6 @@ def move(element,dx,dy):
 def move_to(element,x,y):
     element.x=x
     element.y=y
-
 
 def is_pressed(v):
     pygame.event.pump()
