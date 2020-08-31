@@ -18,6 +18,7 @@ SOUND_DIR = os.path.join(GAME_DIR,'sound')
 
 font_list = {}
 actions=[]
+responses=[]
 cont_action=True
 last_draw_time=0
 
@@ -36,6 +37,48 @@ class Element:
         self.x += x
         self.y += y
 
+class EventResponder:
+    def __init__(self, action):
+        self._action = action
+    def act(self,event,*args,**kwarg):
+        self._action(event,*args,**kwarg)
+    def should_respond(self,event,*args,**kwarg):
+        return False
+
+class KeyboardResponder(EventResponder):
+    def __init__(self,key,action):
+        super().__init__(action)
+        self._key_code = pygame.key.key_code(key)
+    def should_respond(self,event):
+        return event.type==pygame.KEYDOWN and event.key==self._key_code
+
+class JoystickResponder(EventResponder):
+    def __init__(self,button,action):
+        super().__init__(action)
+        self._button = button
+    def should_respond(self,event):
+        return event.type==pygame.KEYDOWN and event.key==self._key_code
+
+class MouseResponder(EventResponder):
+    def __init__(self,button,action):
+        super().__init__(action)
+        self._button = button
+    def should_respond(self,event):
+        return event.type==pygame.KEYDOWN and event.key==self._key_code
+
+class TimerResponder(EventResponder):
+    def __init__(self,tick,action):
+        super().__init__(action)
+        self._tick = tick
+    def should_respond(self,event):
+        return False # TODO
+
+class DrawingResponder(EventResponder):
+    def __init__(self,action):
+        super().__init__(action)
+    def should_respond(self,event):
+        return False # TODO
+
 class Image(Element):
     def __init__(self,img_file,x=0,y=0):
         super().__init__(x,y)
@@ -45,6 +88,40 @@ class Image(Element):
         self.rect.left   = self.x
         self.rect.bottom = self.y
         SCREEN.blit(self.img, self.rect)
+
+
+def add_response(response_type):
+    global responses
+    responses.append(response_type)
+
+def remove_response(response_type):
+    global responses
+    try:
+        idx = responses.index(response_type)
+        del responses[idx]
+    except:
+        return
+
+def when(event , action,**kwargs):
+    responder=None
+    if event=='draw':
+        responder = DrawingResponder(action)
+    elif event=='key':
+        if 'letter' in kwargs:
+            responder = KeyboardResponder(kwargs['letter'],action)
+        else:
+            responder = KeyboardResponder(None,action)
+    elif event=='joystick':
+        responder = JoystickResponder(None,action)
+    elif event=='mouse':
+        responder = MouseResponder(None,action)
+    
+    if responder is not None:
+        add_response(responder)
+    return responder
+
+
+
 
 class Text(Element):
     def __init__(self,txt,x=0,y=0,font_name='freesansbold.ttf',font_size=32,color=[255,255,255],antialias=False):
@@ -107,17 +184,15 @@ def add_action(action):
     actions.append(action)
 
 def start(t=1000/50):
-    global last_draw_time
+
+    DRAW_EVENT_ID=pygame.USEREVENT+1
+    pygame.time.set_timer(DRAW_EVENT_ID,t)
+
     while cont_action :
-        for a in actions:
-            a()
-        draw()
-        wait_until = last_draw_time + t
-        tick = pygame.time.get_ticks()
-        if tick < wait_until:
-            wait_time = int(wait_until - tick)
-            wait(wait_time)
-        last_draw_time = tick
+        event = pygame.event.wait()
+        if event.type == DRAW_EVENT_ID :
+            draw()
+        
 
 def stop():
     global cont_action
