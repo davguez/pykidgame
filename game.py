@@ -9,6 +9,8 @@
 import pygame
 import os
 from inspect import signature
+from collections.abc import Iterable
+from copy import copy
 
 DRAW_EVENT_ID=pygame.USEREVENT
 
@@ -53,32 +55,83 @@ class EventResponder:
         return False
 
 class KeyboardResponder(EventResponder):
-    def __init__(self,action,key=None):
+    def __init__(self,action,letter=None,on_down=True,on_up=False):
         super().__init__(action)
-        self._key_code = pygame.key.key_code(key)
+        self._key_code = pygame.key.key_code(letter)
+        self._state=[]
+        if on_down :
+            self._state.append(pygame.KEYDOWN)
+        if on_up :
+            self._state.append(pygame.KEYUP)
     def should_respond(self,event):
-        return event.type==pygame.KEYDOWN and ( self._key_code is None or event.key==self._key_code )
+        return event.type in self._state and ( self._key_code is None or event.key==self._key_code )
 
 class JoystickResponder(EventResponder):
-    def __init__(self,action,button=None):
+    def __init__(self,action,on_down=True,on_up=False,on_motion=True,axis=None,buttons=None,joy_num=None):
         super().__init__(action)
-        self._button = button
+
+        if buttons is None:
+            self._buttons = None
+        elif isinstance(buttons,Iterable):
+            self._buttons = copy(buttons)
+        else:
+            self._buttons = [ buttons ]
+
+        if axis is None:
+            self._axis = None
+        elif isinstance(axis,Iterable):
+            self._axis = copy(axis)
+        else:
+            self._axis = [ axis ]
+
+        self._joy_num=joy_num
+        self._state=[]
+        if on_down :
+            self._state.append(pygame.JOYBUTTONDOWN)
+        if on_up :
+            self._state.append(pygame.JOYBUTTONUP)
+        if on_motion :
+            self._state.append(pygame.JOYAXISMOTION)
     def should_respond(self,event):
-        return event.type==pygame.KEYDOWN and ( self._button is None or event.key==self._button )
+        if self._joy_num is not None and event.joy != self._joy_num:
+            return False
+        return event.type in self._state and ( self._buttons is None or event.button in self._buttons ) \
+            and (self._axis is None or event.axis in self._axis)
+        return True
 
 class MouseResponder(EventResponder):
-    def __init__(self,action, button=None):
+    def __init__(self,action,on_down=True,on_up=False, on_motion=True,on_wheel=True,buttons=None):
         super().__init__(action)
-        self._button = button
+
+        if buttons is None:
+            self._buttons = None
+        elif isinstance(buttons,Iterable):
+            self._buttons = copy(buttons)
+        else:
+            self._buttons = [ buttons ]
+
+        self._state=[]
+        if on_down :
+            self._state.append(pygame.MOUSEBUTTONDOWN)
+        if on_up :
+            self._state.append(pygame.MOUSEBUTTONUP)
+        if on_motion :
+            self._state.append(pygame.MOUSEMOTION)
+        if on_wheel :
+            self._state.append(pygame.MOUSEWHEEL)
     def should_respond(self,event):
-        return event.type==pygame.KEYDOWN and ( self._button is None or event.key==self._button )
+        return event.type in self._state and ( self._buttons is None or event.button in self._buttons )
+        
 
 class TimerResponder(EventResponder):
-    def __init__(self,action,time_id):
+    def __init__(self,action,timer_id=None):
         super().__init__(action)
-        self._time_id = time_id + pygame.USEREVENT +1
+        if timer_id is None:
+            self._time_id = None
+        else:
+            self._time_id = timer_id + pygame.USEREVENT +1
     def should_respond(self,event):
-        return event.type == self._time_id
+        return (self._time_id is None and event.type>DRAW_EVENT_ID) or (event.type == self._time_id)
 
 class DrawingResponder(EventResponder):
     def __init__(self,action):
@@ -96,6 +149,8 @@ class Image(Element):
         self.rect.bottom = self.y
         SCREEN.blit(self.img, self.rect)
 
+def number_of_joysticks():
+    return pygame.joystick.get_count()
 
 def add_timer(timer_id , every , duration=None):
     pygame.time.set_timer(pygame.USEREVENT + 1 + timer_id, int(every))
@@ -127,20 +182,21 @@ def when(event , action,**kwargs):
     if event=='draw':
         responder = DrawingResponder(action)
     elif event=='key':
-        if 'letter' in kwargs:
-            responder = KeyboardResponder(action,kwargs['letter'])
-        else:
-            responder = KeyboardResponder(action)
-    elif event=='joystick click':
-        responder = JoystickResponder(action)
-    elif event=='joystick move':
-        responder = JoystickResponder(action)
-    elif event=='mouse click':
-        responder = MouseResponder(action)
-    elif event=='mouse move':
-        responder = MouseResponder(action)
+        passed_keys=['letter','on_down','on_up']
+        passed_args= { k:v for k,v in kwargs.items() if k in passed_keys }
+        responder = KeyboardResponder(action,**passed_args)
+    elif event=='joystick':
+        passed_keys=['on_down','on_up', 'on_motion','buttons','axis','joy_num']
+        passed_args= { k:v for k,v in kwargs.items() if k in passed_keys }
+        responder = JoystickResponder(action,**passed_args)
+    elif event=='mouse':
+        passed_keys=['on_down','on_up', 'on_motion','on_wheel','buttons']
+        passed_args= { k:v for k,v in kwargs.items() if k in passed_keys }
+        responder = MouseResponder(action,**passed_args)
     elif event=='timer':
-        responder = TimerResponder(action,kwargs['timer_id'])
+        passed_keys=['time_id']
+        passed_args= { k:v for k,v in kwargs.items() if k in passed_keys }
+        responder = TimerResponder(action,**passed_args)
     
     if responder is not None:
         add_response(responder)
