@@ -27,6 +27,18 @@ responses=[]
 cont_action=True
 last_draw_time=0
 
+def search_image(img_name):
+    ext_list = ['','.png','.gif','.jpg','.jpeg','.bmp']
+    for e in ext_list :
+        tst = img_name + e
+        if os.path.exists( tst ):
+            return tst
+    for e in ext_list :
+        tst = os.path.join(IMG_DIR , img_name + e )
+        if os.path.exists( tst ):
+            return tst
+    return None
+
 class Element:
     def __init__(self,x,y):
         self.x = x
@@ -93,9 +105,8 @@ class JoystickResponder(EventResponder):
         if on_motion :
             self._state.append(pygame.JOYAXISMOTION)
     def should_respond(self,event):
-        if self._joy_num is not None and event.joy != self._joy_num:
-            return False
-        return event.type in self._state and ( self._buttons is None or event.button in self._buttons ) \
+        return event.type in self._state and (self._joy_num is None or event.joy == self._joy_num) \
+            and ( self._buttons is None or event.button in self._buttons ) \
             and (self._axis is None or event.axis in self._axis)
         return True
 
@@ -131,7 +142,7 @@ class TimerResponder(EventResponder):
         else:
             self._time_id = timer_id + pygame.USEREVENT +1
     def should_respond(self,event):
-        return (self._time_id is None and event.type>DRAW_EVENT_ID) or (event.type == self._time_id)
+        return (event.type>DRAW_EVENT_ID and self._time_id is None) or (event.type == self._time_id)
 
 class DrawingResponder(EventResponder):
     def __init__(self,action):
@@ -142,6 +153,9 @@ class DrawingResponder(EventResponder):
 class Image(Element):
     def __init__(self,img_file,x=0,y=0):
         super().__init__(x,y)
+        img_file = search_image(img_file)
+        if img_file is None:
+            return
         self.img = pygame.image.load(os.path.join(IMG_DIR,img_file))
         self.rect = self.img.get_rect()
     def _draw(self):
