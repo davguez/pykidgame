@@ -7,7 +7,7 @@
 # @Date   : 14/08/2020, 9:21:03
 
 import pygame
-import os
+import os, sys
 from inspect import signature
 from collections.abc import Iterable
 from copy import copy
@@ -27,14 +27,25 @@ responses=[]
 cont_action=True
 last_draw_time=0
 
+
+def reset_everything():
+    global font_list , actions, responses, cont_action, last_draw_time
+    font_list = {}
+    actions=[]
+    responses=[]
+    cont_action=True
+    last_draw_time=0
+
+
 def search_image(img_name):
     ext_list = ['','.png','.gif','.jpg','.jpeg','.bmp']
+    dname = os.path.dirname(sys.argv[0])
     for e in ext_list :
-        tst = img_name + e
+        tst = os.path.join(dname, img_name + e)
         if os.path.exists( tst ):
             return tst
     for e in ext_list :
-        tst = os.path.join(IMG_DIR , img_name + e )
+        tst = os.path.join( IMG_DIR , img_name + e )
         if os.path.exists( tst ):
             return tst
     return None
@@ -69,7 +80,7 @@ class EventResponder:
 class KeyboardResponder(EventResponder):
     def __init__(self,action,letter=None,on_down=True,on_up=False):
         super().__init__(action)
-        self._key_code = pygame.key.key_code(letter)
+        self._key_code = None if letter is None else pygame.key.key_code(letter)
         self._state=[]
         if on_down :
             self._state.append(pygame.KEYDOWN)
@@ -104,11 +115,11 @@ class JoystickResponder(EventResponder):
             self._state.append(pygame.JOYBUTTONUP)
         if on_motion :
             self._state.append(pygame.JOYAXISMOTION)
+
     def should_respond(self,event):
         return event.type in self._state and (self._joy_num is None or event.joy == self._joy_num) \
             and ( self._buttons is None or event.button in self._buttons ) \
             and (self._axis is None or event.axis in self._axis)
-        return True
 
 class MouseResponder(EventResponder):
     def __init__(self,action,on_down=True,on_up=False, on_motion=True,on_wheel=True,buttons=None):
@@ -156,7 +167,7 @@ class Image(Element):
         img_file = search_image(img_file)
         if img_file is None:
             return
-        self.img = pygame.image.load(os.path.join(IMG_DIR,img_file))
+        self.img = pygame.image.load(img_file)
         self.rect = self.img.get_rect()
     def _draw(self):
         self.rect.left   = self.x
