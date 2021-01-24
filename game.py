@@ -170,8 +170,8 @@ class Image(Element):
         self.img = pygame.image.load(img_file)
         self.rect = self.img.get_rect()
     def _draw(self):
-        self.rect.left   = self.x
-        self.rect.bottom = self.y
+        self.rect.left= self.x
+        self.rect.top = self.y
         SCREEN.blit(self.img, self.rect)
 
 def number_of_joysticks():
