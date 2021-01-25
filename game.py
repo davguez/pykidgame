@@ -6,6 +6,7 @@
 # @Link   : 
 # @Date   : 14/08/2020, 9:21:03
 
+from typing import List, Union
 import pygame
 import os, sys
 from inspect import signature
@@ -37,7 +38,7 @@ def reset_everything():
     last_draw_time=0
 
 
-def search_image(img_name):
+def search_image(img_name  : Union[ str , None]):
     ext_list = ['','.png','.gif','.jpg','.jpeg','.bmp']
     dname = os.path.dirname(sys.argv[0])
     for e in ext_list :
@@ -51,7 +52,7 @@ def search_image(img_name):
     return None
 
 class Element:
-    def __init__(self,x,y):
+    def __init__(self,x: int,y: int):
         self.x = x
         self.y = y
         self.show=True
@@ -162,7 +163,7 @@ class DrawingResponder(EventResponder):
         return event.type == DRAW_EVENT_ID
 
 class Image(Element):
-    def __init__(self,img_file,x=0,y=0):
+    def __init__(self,img_file:Union[str,None],x:int=0,y:int=0):
         super().__init__(x,y)
         img_file = search_image(img_file)
         if img_file is None:
@@ -177,7 +178,7 @@ class Image(Element):
 def number_of_joysticks():
     return pygame.joystick.get_count()
 
-def add_timer(timer_id , every , duration=None):
+def add_timer(timer_id , every:int , duration=None):
     pygame.time.set_timer(pygame.USEREVENT + 1 + timer_id, int(every))
     if duration is not None :
         def create_fn():
@@ -229,7 +230,7 @@ def when(event , action,**kwargs):
 
 
 class Text(Element):
-    def __init__(self,txt,x=0,y=0,font_name='freesansbold.ttf',font_size=32,color=[255,255,255],antialias=False):
+    def __init__(self,txt:str,x:int=0,y:int=0,font_name:str='freesansbold.ttf',font_size:int=32,color:List[int]=[255,255,255],antialias=False):
         super().__init__(x,y)
         self.antialias=antialias
         self.color=color
@@ -248,7 +249,7 @@ class Text(Element):
         SCREEN.blit(surf , rect)
 
 class Line(Element):
-    def __init__(self,x=0,y=0,w=100,h=100,color=[255,255,255],line_width=1,antialias=False):
+    def __init__(self,x:int=0,y:int=0,w:int=100,h:int=100,color:List[int]=[255,255,255],line_width:int=1,antialias=False):
         super().__init__(x,y)
         self.w=w
         self.h=h
@@ -262,7 +263,7 @@ class Line(Element):
             pygame.draw.line( SCREEN, self.color, (self.x,self.y) , (self.x+self.w,self.y+self.h),self.line_width )
 
 class Rect(Element):
-    def __init__(self,x=0,y=0,w=100,h=100,color=[255,255,255],line_width=1):
+    def __init__(self,x:int=0,y:int=0,w:int=100,h:int=100,color:List[int]=[255,255,255],line_width=1):
         super().__init__(x,y)
         self.w=w
         self.h=h
@@ -273,7 +274,7 @@ class Rect(Element):
         pygame.draw.rect( SCREEN, self.color, R,self.line_width )
 
 class Ellipse(Element):
-    def __init__(self,x=0,y=0,w=100,h=100,color=[255,255,255],line_width=1):
+    def __init__(self,x:int=0,y:int=0,w:int=100,h:int=100,color:List[int]=[255,255,255],line_width=1):
         super().__init__(x,y)
         self.w=w
         self.h=h
@@ -295,6 +296,8 @@ def start(t=1000/50):
         event = pygame.event.wait()
         if event.type == DRAW_EVENT_ID :
             draw()
+        if event.type == pygame.QUIT:
+            stop()
         for response in responses :
             if response.should_respond(event) :
                 response.act(event)
