@@ -81,7 +81,7 @@ class EventResponder:
 class KeyboardResponder(EventResponder):
     def __init__(self,action,letter=None,on_down=True,on_up=False):
         super().__init__(action)
-        self._key_code = None if letter is None else pygame.key.key_code(letter)
+        self._key_code = None if letter is None else ( pygame.key.key_code(letter) if isinstance(letter , str) else letter )
         self._state=[]
         if on_down :
             self._state.append(pygame.KEYDOWN)
