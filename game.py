@@ -78,10 +78,13 @@ class EventResponder:
     def should_respond(self,event):
         return False
 
+def letter_code(letter) :
+    return pygame.key.key_code(letter) if isinstance(letter , str) else letter
+
 class KeyboardResponder(EventResponder):
-    def __init__(self,action,letter=None,on_down=True,on_up=False):
+    def __init__(self,action,letter=None,on_down=True,on_up=False,check_every=None):
         super().__init__(action)
-        self._key_code = None if letter is None else ( pygame.key.key_code(letter) if isinstance(letter , str) else letter )
+        self._key_code = None if letter is None else letter_code(letter)
         self._state=[]
         if on_down :
             self._state.append(pygame.KEYDOWN)
@@ -151,7 +154,7 @@ class TimerResponder(EventResponder):
         super().__init__(action)
         if timer_id is None:
             self._time_id = None
-        else:
+        else :
             self._time_id = timer_id + pygame.USEREVENT +1
     def should_respond(self,event):
         return (event.type>DRAW_EVENT_ID and self._time_id is None) or (event.type == self._time_id)
@@ -170,23 +173,49 @@ class Image(Element):
             return
         self.img = pygame.image.load(img_file)
         self.rect = self.img.get_rect()
+        self._angle = 0
+        self._img_bank = [self.img]
+        self._cur_look = 0
+    def angle(self,angle):
+        dtheta = angle-self._angle
+        self.img = pygame.transform.rotate(self.img , dtheta)
+        self._angle  = angle
+    def next_look(self):
+        self._cur_look += 1
+        if self._cur_look>=len(self._img_bank):
+            self._cur_look=0
+        self.img = self._img_bank[self._cur_look]
+        a,self._angle = self._angle , 0
+        self.angle(a)
     def _draw(self):
         self.rect.left= self.x
         self.rect.top = self.y
         SCREEN.blit(self.img, self.rect)
+    def add_look(self,img_file:Union[str,None]):
+        img_file = search_image(img_file)
+        if img_file is None:
+            return
+        try:
+            img = pygame.image.load(img_file)
+        except:
+            return
+        self._img_bank.append(img)
+        
+        
 
 def number_of_joysticks():
     return pygame.joystick.get_count()
 
 def add_timer(timer_id , every:int , duration=None):
-    pygame.time.set_timer(pygame.USEREVENT + 1 + timer_id, int(every))
+    this_event_id = pygame.USEREVENT + 1 + timer_id
+    pygame.time.set_timer(this_event_id, int(every))
     if duration is not None :
         def create_fn():
             ini_time = pygame.time.get_ticks()
             def stop_this_clock(event):
                 this_time = pygame.time.get_ticks()
                 if this_time - ini_time >= duration :
-                    pygame.time.set_timer(pygame.USEREVENT + 1 + timer_id, 0)
+                    pygame.time.set_timer(this_event_id, 0)
             return stop_this_clock
         when('timer',create_fn(),time_id=timer_id)
 
@@ -208,7 +237,7 @@ def when(event , action,**kwargs):
     if event=='draw':
         responder = DrawingResponder(action)
     elif event=='key':
-        passed_keys=['letter','on_down','on_up']
+        passed_keys=['letter','on_down','on_up','check_every']
         passed_args= { k:v for k,v in kwargs.items() if k in passed_keys }
         responder = KeyboardResponder(action,**passed_args)
     elif event=='joystick':
@@ -220,14 +249,20 @@ def when(event , action,**kwargs):
         passed_args= { k:v for k,v in kwargs.items() if k in passed_keys }
         responder = MouseResponder(action,**passed_args)
     elif event=='timer':
-        passed_keys=['time_id']
+        passed_keys=['timer_id']
         passed_args= { k:v for k,v in kwargs.items() if k in passed_keys }
+        if 'every' in kwargs :
+            add_timer(kwargs['timer_id'] , kwargs['every'], kwargs.get('duration',None))
         responder = TimerResponder(action,**passed_args)
     
     if responder is not None:
         add_response(responder)
     return responder
 
+def is_key_pressed(letter):
+    letter = letter_code(letter)
+    return pygame.key.get_pressed()[letter]
+    
 
 class Text(Element):
     def __init__(self,txt:str,x:int=0,y:int=0,font_name:str='freesansbold.ttf',font_size:int=32,color:List[int]=[255,255,255],antialias=False):
