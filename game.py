@@ -176,14 +176,15 @@ class Image(Element):
         self._angle = 0
         self._img_bank = [self.img]
         self._cur_look = 0
+        self._look_way = 1
     def angle(self,angle):
         dtheta = angle-self._angle
         self.img = pygame.transform.rotate(self.img , dtheta)
         self._angle  = angle
     def next_look(self):
-        self._cur_look += 1
-        if self._cur_look>=len(self._img_bank):
-            self._cur_look=0
+        if (self._cur_look + self._look_way >= len(self._img_bank)) or (self._cur_look + self._look_way<0):
+            self._look_way *= -1
+        self._cur_look += self._look_way
         self.img = self._img_bank[self._cur_look]
         a,self._angle = self._angle , 0
         self.angle(a)
