@@ -13,29 +13,32 @@ from inspect import signature
 from collections.abc import Iterable
 from copy import copy
 
-DRAW_EVENT_ID=pygame.USEREVENT
+class GAME:
+    def __init__(self):
+        self.DRAW_EVENT_ID = pygame.USEREVENT
 
-SIZE = WIDTH,HEIGHT = 800,600
-SCREEN = pygame.display.set_mode(SIZE)
-ALL_ELEMENTS=[]
-GAME_DIR = os.path.join(os.path.expanduser("~"),'pygamedir')
-IMG_DIR = os.path.join(GAME_DIR,'images')
-SOUND_DIR = os.path.join(GAME_DIR,'sound')
+        self.SIZE = [800, 600]
+        self.SCREEN = None
+        self.ALL_ELEMENTS = []
+        self.GAME_DIR = os.path.join(os.path.expanduser("~"), 'pygamedir')
+        self.IMG_DIR = os.path.join(self.GAME_DIR, 'images')
+        self.SOUND_DIR = os.path.join(self.GAME_DIR, 'sound')
 
-font_list = {}
-actions=[]
-responses=[]
-cont_action=True
-last_draw_time=0
+        self.font_list = {}
+        self.actions = []
+        self.responses = []
+        self.cont_action = True
+        self.last_draw_time = 0
 
+
+theGame = GAME()
 
 def reset_everything():
-    global font_list , actions, responses, cont_action, last_draw_time
-    font_list = {}
-    actions=[]
-    responses=[]
-    cont_action=True
-    last_draw_time=0
+    theGame.font_list = {}
+    theGame.actions=[]
+    theGame.responses=[]
+    theGame.cont_action=True
+    theGame.last_draw_time=0
 
 
 def search_image(img_name  : Union[ str , None]):
@@ -46,7 +49,7 @@ def search_image(img_name  : Union[ str , None]):
         if os.path.exists( tst ):
             return tst
     for e in ext_list :
-        tst = os.path.join( IMG_DIR , img_name + e )
+        tst = os.path.join( theGame.IMG_DIR , img_name + e )
         if os.path.exists( tst ):
             return tst
     return None
@@ -56,7 +59,7 @@ class Element:
         self.x = x
         self.y = y
         self.show=True
-        ALL_ELEMENTS.append(self)
+        theGame.ALL_ELEMENTS.append(self)
     def _draw(self):
         pass
     def draw(self):
@@ -126,7 +129,7 @@ class JoystickResponder(EventResponder):
             and (self._axis is None or event.axis in self._axis)
 
 class MouseResponder(EventResponder):
-    def __init__(self,action,on_down=True,on_up=False, on_motion=True,on_wheel=True,buttons=None):
+    def __init__(self,action,on_down=False,on_up=False, on_motion=False,on_wheel=False,buttons=None):
         super().__init__(action)
 
         if buttons is None:
@@ -157,13 +160,13 @@ class TimerResponder(EventResponder):
         else :
             self._time_id = timer_id + pygame.USEREVENT +1
     def should_respond(self,event):
-        return (event.type>DRAW_EVENT_ID and self._time_id is None) or (event.type == self._time_id)
+        return (event.type>theGame.DRAW_EVENT_ID and self._time_id is None) or (event.type == self._time_id)
 
 class DrawingResponder(EventResponder):
     def __init__(self,action):
         super().__init__(action)
     def should_respond(self,event):
-        return event.type == DRAW_EVENT_ID
+        return event.type == theGame.DRAW_EVENT_ID
 
 class Image(Element):
     def __init__(self,img_file:Union[str,None],x:int=0,y:int=0):
@@ -191,7 +194,7 @@ class Image(Element):
     def _draw(self):
         self.rect.left= self.x
         self.rect.top = self.y
-        SCREEN.blit(self.img, self.rect)
+        theGame.SCREEN.blit(self.img, self.rect)
     def add_look(self,img_file:Union[str,None]):
         img_file = search_image(img_file)
         if img_file is None:
@@ -222,14 +225,12 @@ def add_timer(timer_id , every:int , duration=None):
 
 
 def add_response(response_type):
-    global responses
-    responses.append(response_type)
+    theGame.responses.append(response_type)
 
 def remove_response(response_type):
-    global responses
     try:
-        idx = responses.index(response_type)
-        del responses[idx]
+        idx = theGame.responses.index(response_type)
+        del theGame.responses[idx]
     except:
         return
 
@@ -271,18 +272,18 @@ class Text(Element):
         self.antialias=antialias
         self.color=color
         self.txt = txt
-        if (font_name,font_size) in font_list:
-            self.font = font_list[font_name,font_size]
+        if (font_name,font_size) in theGame.font_list:
+            self.font = theGame.font_list[font_name,font_size]
         else:
             self.font = pygame.font.Font(font_name,font_size)
-            font_list[font_name,font_size] = self.font
+            theGame.font_list[font_name,font_size] = self.font
         
     def _draw(self):
         surf = self.font.render(self.txt,self.antialias, self.color)
         rect = surf.get_rect()
         rect.left = self.x
         rect.top = self.y
-        SCREEN.blit(surf , rect)
+        theGame.SCREEN.blit(surf , rect)
 
 class Line(Element):
     def __init__(self,x:int=0,y:int=0,w:int=100,h:int=100,color:List[int]=[255,255,255],line_width:int=1,antialias=False):
@@ -294,9 +295,9 @@ class Line(Element):
         self.antialias=antialias
     def _draw(self):
         if self.antialias:
-            pygame.draw.aaline( SCREEN, self.color, (self.x,self.y) , (self.x+self.w,self.y+self.h) )
+            pygame.draw.aaline( theGame.SCREEN, self.color, (self.x,self.y) , (self.x+self.w,self.y+self.h) )
         else:
-            pygame.draw.line( SCREEN, self.color, (self.x,self.y) , (self.x+self.w,self.y+self.h),self.line_width )
+            pygame.draw.line( theGame.SCREEN, self.color, (self.x,self.y) , (self.x+self.w,self.y+self.h),self.line_width )
 
 class Rect(Element):
     def __init__(self,x:int=0,y:int=0,w:int=100,h:int=100,color:List[int]=[255,255,255],line_width=1):
@@ -307,7 +308,7 @@ class Rect(Element):
         self.line_width=line_width
     def _draw(self):
         R = pygame.Rect(self.x,self.y,self.w,self.h)
-        pygame.draw.rect( SCREEN, self.color, R,self.line_width )
+        pygame.draw.rect( theGame.SCREEN, self.color, R,self.line_width )
 
 class Ellipse(Element):
     def __init__(self,x:int=0,y:int=0,w:int=100,h:int=100,color:List[int]=[255,255,255],line_width=1):
@@ -318,7 +319,7 @@ class Ellipse(Element):
         self.line_width=line_width
     def _draw(self):
         R = pygame.Rect(self.x,self.y,self.w,self.h)
-        pygame.draw.ellipse( SCREEN, self.color, R,self.line_width )
+        pygame.draw.ellipse( theGame.SCREEN, self.color, R,self.line_width )
 
 
 def add_action(action):
@@ -326,21 +327,20 @@ def add_action(action):
     actions.append(action)
 
 def start(t=1000/50):
-    pygame.time.set_timer(DRAW_EVENT_ID,int(t))
+    pygame.time.set_timer(theGame.DRAW_EVENT_ID,int(t))
 
-    while cont_action :
+    while theGame.cont_action :
         event = pygame.event.wait()
-        if event.type == DRAW_EVENT_ID :
+        if event.type == theGame.DRAW_EVENT_ID :
             draw()
         if event.type == pygame.QUIT:
             stop()
-        for response in responses :
+        for response in theGame.responses :
             if response.should_respond(event) :
                 response.act(event)
 
 def stop():
-    global cont_action
-    cont_action = False
+    theGame.cont_action = False
 
 def move(element,dx,dy):
     element.move(dx,dy)
@@ -354,11 +354,13 @@ def is_pressed(v):
     K = pygame.key.get_pressed()
     return K[code]
 
-def init():
-    if not os.path.exists(IMG_DIR) :
-        os.makedirs(IMG_DIR)
-    if not os.path.exists(SOUND_DIR) :
-        os.makedirs(SOUND_DIR)
+def init(size=(800,600)):
+    if not os.path.exists(theGame.IMG_DIR) :
+        os.makedirs(theGame.IMG_DIR)
+    if not os.path.exists(theGame.SOUND_DIR) :
+        os.makedirs(theGame.SOUND_DIR)
+    theGame.SIZE[:] = size
+    theGame.SCREEN = pygame.display.set_mode(theGame.SIZE)
     pygame.init()
 
 def wait(t=20):
@@ -368,7 +370,7 @@ def finish():
     pygame.quit()
 
 def draw():
-    SCREEN.fill([0,0,0])
-    for el in ALL_ELEMENTS:
+    theGame.SCREEN.fill([0,0,0])
+    for el in theGame.ALL_ELEMENTS:
         el.draw()
     pygame.display.flip()
