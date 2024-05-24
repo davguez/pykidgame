@@ -14,8 +14,8 @@ class Object:
     def pos(self,i, j):
         return i * BLOCK_SIZE, j * BLOCK_SIZE
 
-    def __init__(self, i,j,image_file):
-        self.image = game.Image(image_file, *self.pos(i,j))
+    def __init__(self, i,j,image_or_file):
+        self.image = game.Image(image_or_file, *self.pos(i,j))
         self.goto(i,j)
     def goto(self,i,j):
         self.i = i
@@ -30,16 +30,20 @@ class Bonhomme(Object):
         super().__init__(i, j, 'resources/bonhomme.png')
 
 class Boite(Object):
+    img = game.image('resources/boite.png')
     def __init__(self, i,j):
-        super().__init__(i, j, 'resources/boite.png')
+        super().__init__(i, j, self.img )
 
 class Place(Object):
+    img = game.image('resources/place.png')
     def __init__(self, i,j):
-        super().__init__(i, j, 'resources/place.png')
+        super().__init__(i, j, self.img)
 
-bonhomme = Bonhomme(10,10)
 boite = Boite(15,10)
 place = Place(16,10)
+place = Place(17,10)
+bonhomme = Bonhomme(10,10)
+
 def a_droite():
     bonhomme.image.angle(-90)
     if bonhomme.i < NB_BLOCK:

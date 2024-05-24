@@ -168,13 +168,20 @@ class DrawingResponder(EventResponder):
     def should_respond(self,event):
         return event.type == theGame.DRAW_EVENT_ID
 
+def image(img_file):
+    img_or_file = search_image(img_file)
+    if img_or_file is None:
+        return None
+    return pygame.image.load(img_or_file)
+    
 class Image(Element):
-    def __init__(self,img_file:Union[str,None],x:int=0,y:int=0):
+    def __init__(self,img_or_file:Union[str,None],x:int=0,y:int=0):
         super().__init__(x,y)
-        img_file = search_image(img_file)
-        if img_file is None:
-            return
-        self.img = pygame.image.load(img_file)
+        if isinstance(img_or_file,str):
+            self.img = image(img_or_file)
+        else:
+            self.img = img_or_file
+        
         self.rect = self.img.get_rect()
         self._angle = 0
         self._img_bank = [self.img]
