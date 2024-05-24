@@ -39,6 +39,10 @@ class Place(Object):
     def __init__(self, i,j):
         super().__init__(i, j, self.img)
 
+class Jeu:
+    def __init__(self) -> None:
+        ...
+
 boite = Boite(15,10)
 place = Place(16,10)
 place = Place(17,10)
@@ -46,11 +50,11 @@ bonhomme = Bonhomme(10,10)
 
 def a_droite():
     bonhomme.image.angle(-90)
-    if bonhomme.i < NB_BLOCK:
+    if bonhomme.i < NB_BLOCK-1:
         bonhomme.goto(bonhomme.i+1,bonhomme.j)
 def en_bas():
     bonhomme.image.angle(180)
-    if bonhomme.j < NB_BLOCK:
+    if bonhomme.j < NB_BLOCK-1:
         bonhomme.goto(bonhomme.i,bonhomme.j+1)
 def a_gauche():
     bonhomme.image.angle(90)
@@ -58,12 +62,12 @@ def a_gauche():
         bonhomme.goto(bonhomme.i-1,bonhomme.j)
 def en_haut():
     bonhomme.image.angle(0)
-    if bonhomme.i > 0:
+    if bonhomme.j > 0:
         bonhomme.goto(bonhomme.i,bonhomme.j-1)
 
 game.init(size=game_size)
-game.when('key',letter=pygame.K_RIGHT,action=a_droite)
-game.when('key',letter=pygame.K_LEFT,action=a_gauche)
-game.when('key',letter=pygame.K_DOWN,action=en_bas)
-game.when('key',letter=pygame.K_UP,action=en_haut)
+game.when('key',letter=pygame.K_RIGHT,action=a_droite,check_every=50)
+game.when('key',letter=pygame.K_LEFT,action=a_gauche,check_every=50)
+game.when('key',letter=pygame.K_DOWN,action=en_bas,check_every=50)
+game.when('key',letter=pygame.K_UP,action=en_haut,check_every=50)
 game.start()
